@@ -1,0 +1,1 @@
+uint32_t rand_uint32_uniform(uint32_t upper_bound);
