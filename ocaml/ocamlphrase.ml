@@ -1,34 +1,42 @@
-open Core.Std
-open Nocrypto
+let read_lines file =
+  let infile = open_in file in
+  let getline () =
+    try Some (input_line infile) with End_of_file -> None in
+  let rec loop lines = match getline () with
+    | Some line -> loop (line :: lines)
+    | None -> close_in infile; List.rev lines in
+  loop []
 
+let gen_phrase wordfile length dashes =
+    let separator = match dashes with
+        | true -> "-"
+        | false -> " " in
+    let wordlist = read_lines wordfile in
+    let upper = List.length wordlist in
+    let rand_ele () =
+        List.nth wordlist (Random.int upper) in
+    let rec loop dec = match dec with
+        | 1 -> print_endline (rand_ele ())
+        | _ -> print_string (rand_ele () ^ separator); loop (dec - 1) in
+    loop length
 
-let gen_phrase wordfile length separator =
-    let wordlist = In_channel.read_lines wordfile in
-    let upper    = List.length wordlist in
-    let passphrase = List.init ~f:(fun _ ->
-        let ele = Rng.Int.gen_r 0 upper in
-        List.nth_exn wordlist ele
-        ) length
-    in
-    print_endline (String.concat ~sep:separator passphrase)
-
-let command =
-    Command.basic
-        ~summary:"Generate strong passphrases"
-        Command.Spec.(
-            empty
-            +> flag "-f" (optional_with_default "wordlist" file)
-                ~doc:"filename Specify wordlist file"
-            +> flag "-d" no_arg ~doc:" Use dash separation"
-            +> anon (maybe_with_default 5 ("Phrase length" %: int))
-        )
-        (fun file use_dash phrase_len () ->
-          match use_dash with
-            | true -> gen_phrase file phrase_len "-"
-            | false -> gen_phrase file phrase_len " "
-          
-        )
-
+(*
+    OCaml's Random library is statistically uniform
+    `self_init` draws a 96-bit seed from the system CSPRNG
+*)
 let () =
-    Nocrypto_entropy_unix.initialize ();
-    Command.run command
+    Random.self_init();
+
+    let wordfile = ref "/usr/share/dict/words" in
+    let length = ref 5 in
+    let dashes = ref false in
+
+    let argDescr = [
+        "-file", Arg.String (fun x -> wordfile := x), "<file> specify wordlist file";
+        "-length", Arg.Int (fun x -> length := x), "<length> length of passphrase";
+        "-dashes", Arg.Set dashes, " separate words with dashes"
+    ] in
+    Arg.parse (Arg.align argDescr) (fun x ->
+        print_endline ("Unrecognized option: " ^ x)) "generate strong passphrases";
+
+    gen_phrase !wordfile !length !dashes
