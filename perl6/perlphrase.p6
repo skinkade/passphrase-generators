@@ -1,58 +1,26 @@
 use v6;
 use strict;
-use experimental :pack;
+use Crypt::Random;
 
 
-
-sub getentropy (Int $entlen) {
-    my $fh = open("/dev/urandom", :bin);
-    my $bytes = $fh.read($entlen);
-    $fh.close;
-    return $bytes;
-}
-
-sub rand_uint32 {
-    return getentropy(4).unpack("L");
-}
-
-sub rand_uniform (Int $upper_bound) {
-    my ($r, $min);
-    
-    if ($upper_bound < 2) {
-        return 0;
-    }
-
-    $min = -$upper_bound % $upper_bound;
-
-    loop (;;) {
-        $r = rand_uint32();
-        if ($r >= $min) {
-                last;
-        }
-    }
-
-    return $r % $upper_bound;
-}
 
 sub printphrase (Str $wordfile, Int $phraselen, Int $phrasecount, Str $separator) {
-    my $wordlist = open($wordfile, :r);
-    my @words = lines $wordlist;
-    $wordlist.close;
-
+    my @words = $wordfile.IO.words;
     my $listlen = @words.elems;
 
     for (1..$phrasecount) {
         my @passphrase;
         for (1..$phraselen) {
-            my $rand_ele = rand_uniform($listlen);
+            my $rand_ele = crypt_random_uniform($listlen);
             @passphrase.push(@words[$rand_ele]);
         }
         say @passphrase.join($separator);
     }
 }
 
-sub MAIN ( :file($file) = '/usr/share/dict/words', Int :$length = 5,
-           Int :$count = 1, Bool :$dashes = False ) {
+subset PosInt of Int where * > 0;
+sub MAIN ( Str :$wordfile = '/usr/share/dict/words', PosInt :$length = 5,
+           PosInt :$count = 1, Bool :$dashes = False ) {
 
             my $separator;
             if ($dashes) {
@@ -61,5 +29,5 @@ sub MAIN ( :file($file) = '/usr/share/dict/words', Int :$length = 5,
                 $separator = " ";
             }
 
-            printphrase($file, $length, $count, $separator);
+            printphrase($wordfile, $length, $count, $separator);
 }
