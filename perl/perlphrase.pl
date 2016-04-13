@@ -19,7 +19,7 @@ sub rand_uniform {
         return 0;
     }
 
-    $min = -$upper_bound % $upper_bound;
+    $min = (2**32 - $upper_bound) % $upper_bound;
 
     for (;;) {
         $r = $csprng->irand;
